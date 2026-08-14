@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFlights } from '@/context/FlightsContext'
+import { validateNewFlight } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-const HAS_LETTER_REGEX = /\p{L}/u
 
 export default function AddFlightPage() {
   const { flightExists, addFlight } = useFlights()
@@ -15,26 +14,9 @@ export default function AddFlightPage() {
   const [airline, setAirline] = useState('')
   const [passengers, setPassengers] = useState('')
 
-  function validate() {
-    if (!/^\d{1,5}$/.test(flightId.trim())) {
-      return 'מספר טיסה חייב להיות ערך מספרי עד 5 ספרות.'
-    }
-    if (flightExists(flightId.trim())) {
-      return 'כבר קיימת טיסה עם מספר זהה.'
-    }
-    if (!HAS_LETTER_REGEX.test(airline.trim())) {
-      return 'שם חברת התעופה חייב להכיל לפחות אות אחת.'
-    }
-    const passengersNum = Number(passengers)
-    if (!Number.isInteger(passengersNum) || passengersNum < 1 || passengersNum > 450) {
-      return 'מספר הנוסעים חייב להיות בין 1 ל-450.'
-    }
-    return null
-  }
-
   function handleSubmit(e) {
     e.preventDefault()
-    const error = validate()
+    const error = validateNewFlight({ id: flightId, airline, passengers }, flightExists)
     if (error) {
       alert(error)
       return
@@ -49,7 +31,7 @@ export default function AddFlightPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">הוסף טיסה</h1>
+      <h1 className="mb-4 font-heading text-3xl text-primary">➕ הוסף טיסה</h1>
       <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="flight-id">מספר טיסה</Label>
@@ -88,7 +70,7 @@ export default function AddFlightPage() {
           />
         </div>
 
-        <Button type="submit">צור</Button>
+        <Button type="submit">צור טיסה 🪄</Button>
       </form>
     </div>
   )

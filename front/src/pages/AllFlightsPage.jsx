@@ -6,7 +6,7 @@ export default function AllFlightsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">כל הטיסות</h1>
+      <h1 className="mb-4 font-heading text-3xl text-primary">🛫 כל הטיסות</h1>
       {flights.length === 0 ? (
         <p className="text-muted-foreground">אין טיסות באוויר כרגע.</p>
       ) : (

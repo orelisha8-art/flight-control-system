@@ -32,7 +32,7 @@ export default function SortFlightsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">מיון טיסות</h1>
+      <h1 className="mb-4 font-heading text-3xl text-primary">🔍 מיון טיסות</h1>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">
         <div className="flex flex-1 flex-col gap-2">

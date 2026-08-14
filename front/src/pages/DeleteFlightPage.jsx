@@ -31,7 +31,7 @@ export default function DeleteFlightPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">מחק טיסה</h1>
+      <h1 className="mb-4 font-heading text-3xl text-primary">💀 מחק טיסה</h1>
       <div className="flex max-w-sm flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="delete-flight-id">מספר טיסה</Label>
@@ -46,7 +46,7 @@ export default function DeleteFlightPage() {
           />
         </div>
         <Button variant="destructive" onClick={handleDelete}>
-          מחק
+          מחק 💀
         </Button>
       </div>
     </div>
