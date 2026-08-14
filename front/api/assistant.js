@@ -101,6 +101,7 @@ export default async function handler(req, res) {
       messages: [...trimmedHistory, { role: 'user', content: message }],
       tools,
       temperature: 0,
+      maxRetries: 4,
     })
 
     const action = extractAction(result)
@@ -109,6 +110,20 @@ export default async function handler(req, res) {
     res.status(200).json({ reply, action })
   } catch (err) {
     console.error('assistant error', err)
+    if (isRateLimitError(err)) {
+      res.status(429).json({ error: 'rate_limited' })
+      return
+    }
     res.status(500).json({ error: 'assistant_failed' })
   }
+}
+
+function isRateLimitError(err) {
+  let current = err
+  for (let i = 0; i < 5 && current; i++) {
+    if (current.statusCode === 429) return true
+    if (typeof current.message === 'string' && /rate.?limit/i.test(current.message)) return true
+    current = current.cause
+  }
+  return false
 }

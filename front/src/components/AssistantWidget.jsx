@@ -11,6 +11,30 @@ const WELCOME_MESSAGE = {
     'בּוּ! 👻 אני פנטום, עוזר הבקרה שלך. אפשר לבקש ממני להוסיף טיסה, לשחרר טיסה, לעבור בין המסכים, או סתם לשאול אותי מה קורה באוויר. כל פעולה שמשנה נתונים אני אציג לך לאישור לפני שהיא מתבצעת.',
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function postToAssistant(payload, attempt = 0) {
+  const response = await fetch('/api/assistant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  if (response.status === 429 && attempt < 1) {
+    await sleep(1500)
+    return postToAssistant(payload, attempt + 1)
+  }
+  if (response.status === 429) {
+    throw new Error('rate_limited')
+  }
+  if (!response.ok) {
+    throw new Error('assistant_failed')
+  }
+  return response.json()
+}
+
 function describeAction(action) {
   if (action.type === 'add_flight') {
     return `להוסיף טיסה מספר ${action.id}, חברת ${action.airline}, ${action.passengers} נוסעים?`
@@ -91,20 +115,14 @@ export default function AssistantWidget() {
     setInput('')
     setIsLoading(true)
 
+    const payload = {
+      message: trimmed,
+      flights,
+      history: nextMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+    }
+
     try {
-      const response = await fetch('/api/assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmed,
-          flights,
-          history: nextMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
-        }),
-      })
-
-      if (!response.ok) throw new Error('assistant_failed')
-
-      const data = await response.json()
+      const data = await postToAssistant(payload)
       const action = data.action
 
       if (action?.type === 'navigate') {
@@ -118,11 +136,12 @@ export default function AssistantWidget() {
       } else {
         setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }])
       }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '👻 אופס, איבדתי קשר לרגע עם המגדל. נסה שוב.' },
-      ])
+    } catch (err) {
+      const content =
+        err.message === 'rate_limited'
+          ? '👻 יש עומס כרגע על המגדל (מגבלת שימוש חינמית) — נסה שוב בעוד כמה שניות.'
+          : '👻 אופס, איבדתי קשר לרגע עם המגדל. נסה שוב.'
+      setMessages((prev) => [...prev, { role: 'assistant', content }])
     } finally {
       setIsLoading(false)
     }
