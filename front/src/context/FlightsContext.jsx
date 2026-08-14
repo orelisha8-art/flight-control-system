@@ -1,46 +1,68 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 const FlightsContext = createContext(null)
 
-const initialFlights = [
-  { id: '10023', airline: 'אל על', passengers: 210 },
-  { id: '20456', airline: 'ישראייר', passengers: 156 },
-  { id: '30789', airline: 'אריקיה', passengers: 98 },
-  { id: '40012', airline: 'Lufthansa', passengers: 320 },
-  { id: '50034', airline: 'Turkish Airlines', passengers: 275 },
-  { id: '60078', airline: 'Wizz Air', passengers: 180 },
-]
-
 export function FlightsProvider({ children }) {
-  const [flights, setFlights] = useState(initialFlights)
+  const [flights, setFlights] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/flights')
+      if (!res.ok) throw new Error('failed to load flights')
+      const data = await res.json()
+      setFlights(data)
+      setLoadError(null)
+    } catch (err) {
+      setLoadError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   function flightExists(id) {
     return flights.some((f) => f.id === id)
   }
 
-  function addFlight({ id, airline, passengers }) {
-    setFlights((prev) => [...prev, { id, airline, passengers }])
+  async function addFlight({ id, airline, passengers }) {
+    const res = await fetch('/api/flights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, airline, passengers }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || 'add_failed')
+    }
+    await refresh()
   }
 
-  function deleteFlight(id) {
-    const removed = flights.find((f) => f.id === id) ?? null
-    if (!removed) {
-      return { removed: null, remainingFlights: flights.length, remainingPassengers: totalPassengers(flights) }
+  async function deleteFlight(id) {
+    const res = await fetch(`/api/flights/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (res.status === 404) {
+      return {
+        removed: null,
+        remainingFlights: flights.length,
+        remainingPassengers: totalPassengers(flights),
+      }
     }
-    const remaining = flights.filter((f) => f.id !== id)
-    setFlights(remaining)
-    return {
-      removed,
-      remainingFlights: remaining.length,
-      remainingPassengers: totalPassengers(remaining),
-    }
+    if (!res.ok) throw new Error('delete_failed')
+    const data = await res.json()
+    await refresh()
+    return data
   }
 
   function totalPassengers(list) {
     return list.reduce((sum, f) => sum + f.passengers, 0)
   }
 
-  const value = { flights, flightExists, addFlight, deleteFlight }
+  const value = { flights, isLoading, loadError, flightExists, addFlight, deleteFlight, refresh }
 
   return <FlightsContext.Provider value={value}>{children}</FlightsContext.Provider>
 }

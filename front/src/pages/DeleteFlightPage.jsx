@@ -7,26 +7,34 @@ import { Label } from '@/components/ui/label'
 export default function DeleteFlightPage() {
   const { deleteFlight } = useFlights()
   const [flightId, setFlightId] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  function handleDelete() {
+  async function handleDelete() {
     const trimmed = flightId.trim()
     if (!/^\d{1,5}$/.test(trimmed)) {
       alert('יש להזין מספר טיסה תקין (עד 5 ספרות).')
       return
     }
 
-    const { removed, remainingFlights, remainingPassengers } = deleteFlight(trimmed)
+    setIsDeleting(true)
+    try {
+      const { removed, remainingFlights, remainingPassengers } = await deleteFlight(trimmed)
 
-    if (!removed) {
-      alert(`לא קיימת טיסה עם מספר ${trimmed}.`)
-      return
+      if (!removed) {
+        alert(`לא קיימת טיסה עם מספר ${trimmed}.`)
+        return
+      }
+
+      alert(
+        `הטיסה ${removed.id} (${removed.airline}) נמחקה בהצלחה.\n` +
+          `כרגע באוויר: ${remainingFlights} טיסות, ${remainingPassengers} נוסעים.`
+      )
+      setFlightId('')
+    } catch {
+      alert('שגיאה במחיקת הטיסה. נסה שוב.')
+    } finally {
+      setIsDeleting(false)
     }
-
-    alert(
-      `הטיסה ${removed.id} (${removed.airline}) נמחקה בהצלחה.\n` +
-        `כרגע באוויר: ${remainingFlights} טיסות, ${remainingPassengers} נוסעים.`
-    )
-    setFlightId('')
   }
 
   return (
@@ -45,8 +53,8 @@ export default function DeleteFlightPage() {
             placeholder="לדוגמה: 12345"
           />
         </div>
-        <Button variant="destructive" onClick={handleDelete}>
-          מחק 💀
+        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+          {isDeleting ? 'מוחק...' : 'מחק 💀'}
         </Button>
       </div>
     </div>

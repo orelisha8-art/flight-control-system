@@ -13,20 +13,29 @@ export default function AddFlightPage() {
   const [flightId, setFlightId] = useState('')
   const [airline, setAirline] = useState('')
   const [passengers, setPassengers] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     const error = validateNewFlight({ id: flightId, airline, passengers }, flightExists)
     if (error) {
       alert(error)
       return
     }
-    addFlight({
-      id: flightId.trim(),
-      airline: airline.trim(),
-      passengers: Number(passengers),
-    })
-    navigate('/controlpanel')
+
+    setIsSubmitting(true)
+    try {
+      await addFlight({
+        id: flightId.trim(),
+        airline: airline.trim(),
+        passengers: Number(passengers),
+      })
+      navigate('/controlpanel')
+    } catch (err) {
+      alert(err.message === 'duplicate_id' ? 'כבר קיימת טיסה עם מספר זהה.' : 'שגיאה בהוספת הטיסה. נסה שוב.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -70,7 +79,9 @@ export default function AddFlightPage() {
           />
         </div>
 
-        <Button type="submit">צור טיסה 🪄</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'יוצר...' : 'צור טיסה 🪄'}
+        </Button>
       </form>
     </div>
   )

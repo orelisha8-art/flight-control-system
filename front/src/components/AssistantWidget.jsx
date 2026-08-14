@@ -61,32 +61,42 @@ export default function AssistantWidget() {
     }
   }, [messages, isOpen])
 
-  function runAction(action) {
+  async function runAction(action) {
     if (action.type === 'add_flight') {
       const error = validateNewFlight(
         { id: action.id, airline: action.airline, passengers: action.passengers },
         flightExists
       )
       if (error) return `⚠️ ${error}`
-      addFlight({
-        id: String(action.id).trim(),
-        airline: String(action.airline).trim(),
-        passengers: Number(action.passengers),
-      })
-      navigate('/controlpanel')
-      return `✅ טיסה ${action.id} נוספה בהצלחה.`
+      try {
+        await addFlight({
+          id: String(action.id).trim(),
+          airline: String(action.airline).trim(),
+          passengers: Number(action.passengers),
+        })
+        navigate('/controlpanel')
+        return `✅ טיסה ${action.id} נוספה בהצלחה.`
+      } catch (err) {
+        return err.message === 'duplicate_id'
+          ? `⚠️ כבר קיימת טיסה עם מספר ${action.id}.`
+          : '⚠️ שגיאה בהוספת הטיסה. נסה שוב.'
+      }
     }
 
     if (action.type === 'delete_flight') {
-      const { removed, remainingFlights, remainingPassengers } = deleteFlight(String(action.id).trim())
-      if (!removed) return `⚠️ לא קיימת טיסה עם מספר ${action.id}.`
-      return `💀 הטיסה ${removed.id} (${removed.airline}) שוחררה. כרגע באוויר: ${remainingFlights} טיסות, ${remainingPassengers} נוסעים.`
+      try {
+        const { removed, remainingFlights, remainingPassengers } = await deleteFlight(String(action.id).trim())
+        if (!removed) return `⚠️ לא קיימת טיסה עם מספר ${action.id}.`
+        return `💀 הטיסה ${removed.id} (${removed.airline}) שוחררה. כרגע באוויר: ${remainingFlights} טיסות, ${remainingPassengers} נוסעים.`
+      } catch {
+        return '⚠️ שגיאה בשחרור הטיסה. נסה שוב.'
+      }
     }
 
     return null
   }
 
-  function resolvePending(index, confirmed) {
+  async function resolvePending(index, confirmed) {
     setMessages((prev) =>
       prev.map((m, i) => {
         if (i !== index || !m.pendingAction) return m
@@ -100,7 +110,7 @@ export default function AssistantWidget() {
     }
 
     const target = messages[index]
-    const note = runAction(target.pendingAction)
+    const note = await runAction(target.pendingAction)
     setMessages((prev) => [...prev, { role: 'assistant', content: note ?? 'בוצע.' }])
   }
 
